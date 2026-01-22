@@ -1,60 +1,47 @@
-import json
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from .models import AppUser, Post
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import User, Post, Comment
+from .serializers import UserSerializer, PostSerializer, CommentSerializer
 
-# ------------------------------
-# Users
-# ------------------------------
 
-# GET all users
-def get_users(request):
-    try:
-        users = list(AppUser.objects.values('id', 'username', 'email', 'created_at'))
-        return JsonResponse(users, safe=False)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+class UserListCreate(APIView):
+    def get(self, request):
+        users = User.objects.all()
+        serializer = UserSerializer(users, many=True)
+        return Response(serializer.data)
 
-# POST create a new user
-@csrf_exempt
-def create_user(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
+    def post(self, request):
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # Check if username and email exist in request
-            if 'username' not in data or 'email' not in data:
-                return JsonResponse({'error': 'Username and email are required'}, status=400)
 
-            user = AppUser.objects.create(username=data['username'], email=data['email'])
-            return JsonResponse({'id': user.id, 'message': 'User created successfully'}, status=201)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
+class PostListCreate(APIView):
+    def get(self, request):
+        posts = Post.objects.all()
+        serializer = PostSerializer(posts, many=True)
+        return Response(serializer.data)
 
-# ------------------------------
-# Posts
-# ------------------------------
+    def post(self, request):
+        serializer = PostSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# GET all posts
-def get_posts(request):
-    try:
-        posts = list(Post.objects.values('id', 'content', 'author', 'created_at'))
-        return JsonResponse(posts, safe=False)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
 
-# POST create a new post
-@csrf_exempt
-def create_post(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
+class CommentListCreate(APIView):
+    def get(self, request):
+        comments = Comment.objects.all()
+        serializer = CommentSerializer(comments, many=True)
+        return Response(serializer.data)
 
-            # Make sure author exists
-            author = AppUser.objects.get(id=data['author'])
-            post = Post.objects.create(content=data['content'], author=author)
-            return JsonResponse({'id': post.id, 'message': 'Post created successfully'}, status=201)
-        except AppUser.DoesNotExist:
-            return JsonResponse({'error': 'Author not found'}, status=404)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
+    def post(self, request):
+        serializer = CommentSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
